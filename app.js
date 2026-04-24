@@ -22,6 +22,84 @@ const state = {
   lastPngDataUrl: "" // stored only in-memory for downloads
 };
 
+const placeholders = {
+  raw: "Exactly what you type will be encoded.",
+  text: "Enter any text...",
+  url: "example.com/path  (https:// will be added if missing)",
+  phone: "+1 (800) 555-1212",
+  email: "name@company.com",
+  sms: "+1 800 555 1212",
+  geo: "41.8781,-87.6298"
+};
+
+function updateHints() {
+  const type = el("type").value;
+  el("text").placeholder = placeholders[type] || "";
+}
+
+// Update when dropdown changes
+el("type").addEventListener("change", () => {
+  updateHints();
+  generateQr();
+});
+
+function buildPayload(type, input) {
+  // We keep transformations simple and predictable.
+  // If the user selects "raw", we return exactly what they typed.
+  const s = (input ?? "").trim();
+
+  switch (type) {
+    case "raw":
+      return input ?? ""; // preserve whitespace exactly as typed
+
+    case "text":
+      return s;
+
+    case "url": {
+      // If user omitted a scheme, assume https://
+      // Keep it minimal: don't do DNS lookups or any external validation.
+      if (!s) return "";
+      if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s)) return s; // already has a scheme
+      return "https://" + s;
+    }
+
+    case "phone": {
+      // Minimal normalization: remove spaces, parentheses, hyphens.
+      // Keep leading + if present.
+      if (!s) return "";
+      const normalized = s.replace(/[^\d+]/g, "");
+      return "tel:" + normalized;
+    }
+
+    case "email": {
+      // Minimal: just mailto: + trimmed address.
+      if (!s) return "";
+      return "mailto:" + s;
+    }
+
+    case "sms": {
+      // Number only; message body would be multi-field, so not included here.
+      if (!s) return "";
+      const normalized = s.replace(/[^\d+]/g, "");
+      return "sms:" + normalized;
+    }
+
+    case "geo": {
+      // Expect "lat,lon" as a single string.
+      // Keep it strict-ish but simple: allow decimals and optional spaces.
+      if (!s) return "";
+      const m = s.match(/^(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)$/);
+      if (!m) return "geo:" + s; // still encode what user gave (transparent)
+      const lat = m[1];
+      const lon = m[3];
+      return `geo:${lat},${lon}`;
+    }
+
+    default:
+      return s;
+  }
+}
+
 function generateQr() {
   const text = el("text").value ?? "";
   const ecc = el("ecc").value;              // 'L' | 'M' | 'Q' | 'H'
@@ -40,7 +118,19 @@ function generateQr() {
   // We pass ONLY the user input string into the QR encoder. No transformation beyond using it as-is.
   // (If “payload helpers” like Wi-Fi/vCard are needed, do it explicitly and visibly.)
   const qr = qrcode(version, ecc);          // from qrcode-generator library
-  qr.addData(text);                         // adds raw data
+
+	const type = el("type").value;
+	const input = el("text").value ?? "";
+
+	// Build the exact string that will be encoded.
+	const payload = buildPayload(type, input);
+
+	// Display it so users/auditors can verify what's being encoded.
+	el("payload").value = payload;
+
+	// Encode ONLY this payload string into the QR.
+	qr.addData(payload);
+
   qr.make();                                // computes matrix (masking, ECC, etc.)
 
   if (format === "svg") {

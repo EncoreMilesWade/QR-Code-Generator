@@ -46,7 +46,18 @@
   <div class="card">
     <h2>Input</h2>
 
-    <label for="text">Text / URL (exactly what will be encoded)</label>
+    <label for="type">Content type</label>
+	<select id="type">
+		<option value="url" selected>URL</option>
+		<option value="text">Plain text</option>
+		<option value="email">Email address</option>
+		<option value="phone">Phone number</option>
+		<option value="sms">SMS (number only)</option>
+		<option value="geo">Geo (lat,lon)</option>
+	</select>
+
+	
+	<label for="text">Enter Contents Here:</label>
     <textarea id="text" spellcheck="false">https://example.com</textarea>
 
     <label for="ecc">Error correction level</label>
@@ -105,7 +116,13 @@
     <div id="out"></div>
     <div class="hint">
       Use the <code>Download</code> button to the left if you are unable to right-click the image.
-    </div>
+	  
+	<br>
+	<br>
+	
+	<label for="payload">Encoded payload (what is inside the QR)</label>
+	<input id="payload" type="text" readonly />
+
   </div>
 </div>
 <div class="copyright-overlay">
