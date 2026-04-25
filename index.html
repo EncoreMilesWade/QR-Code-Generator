@@ -1,146 +1,248 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="icon" type="image/svg+xml" href="./favicon_32x32.svg" />
-  <title>QR Code Generator</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="./favicon_32x32.svg" />
+<title>Web Audio Spectrum Analyzer</title>
+<style>
+  body { margin:0; font-family:sans-serif; background:#111; color:#fff; overflow:hidden; }
+  canvas { display:block; width:100vw; height:100vh; touch-action: manipulation; }
 
-  <!--
-    CSP: “Nothing loads from anywhere unless we explicitly allow it.”
-    - default-src 'none' blocks all network by default.
-    - script-src 'self' allows only local scripts.
-    - style-src 'self' 'unsafe-inline' allows our local CSS and tiny inline styles.
-    - img-src 'self' data: allows rendering QR as data URLs if needed.
-  -->
-  <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; font-src 'none'; base-uri 'none'; form-action 'none'">
+  .copyright-overlay { position: fixed; right: 12px; bottom: 12px; z-index: 9999; pointer-events: none;}
+  .copyright-card { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; padding: 8px 12px; border-radius: 14px; background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.10); backdrop-filter: blur(8px);}
+  .copyright-logo { opacity: 0.8; height: auto; width: 8vmin; min-width: 36px; max-width: 307px;}
+  .copyright-text { font-size: 11px; color: rgba(255, 255, 255, 0.8);}
+  
+  #pausenote { position: absolute; top: 10px; left:50%; transform: translateX(-50%); font-size: 20px; text-align:center; display:none; z-index:5; background: rgba(0,0,0,0.5); padding: 4px 10px; border-radius:4px; }
+  #info { position:absolute; top:10px; left:10px; font-size:32px; font-family:monospace; line-height:1.2; text-align:right; }
+  #hamburger { position:absolute; top:10px; right:10px; font-size:24px; cursor:pointer; }
+  #settings { position:absolute; top:40px; right:10px; background:#222; padding:10px; border-radius:5px; display:none; }
+  select { margin-top:5px; }
+  #welcome { text-align:center; position:absolute; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.9); color:#fff;
+             display:flex; align-items:center; justify-content:center; flex-direction:column; font-size:20px; }
+  #welcome button { margin-top:20px; padding:10px 20px; font-size:18px; cursor:pointer; }
+  #pausedOverlay {position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: black; color: yellow; padding: 20px 40px; font-size: 32px; font-weight: bold; border: 2px solid yellow; display: none;	z-index: 20;}
+  
 
-  <style>
-    
-	*, *::before, *::after { box-sizing: border-box; }
-	body { font-family: system-ui, Segoe UI, Arial, sans-serif; margin: 24px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
-    label { display:block; font-size: 20px; color:#333; margin-top: 10px; }
-    input, select, textarea, button { width: 100%; padding: 8px; margin-top: 6px; }
-    textarea { height: 120px; resize: vertical; }
-    #out { display:flex; justify-content:center; align-items:center; min-height: 320px; }
-    .btnrow { display:flex; gap: 10px; margin-top: 12px; }
-    .btnrow button { width: auto; }
-    .hint { font-size: 12px; color:#555; margin-top: 8px; line-height: 1.3; }
-    code { background:#f6f6f6; padding: 2px 4px; border-radius: 4px; }
-	.copyright-logo { height: auto; width: 8vmin; min-width: 36px; max-width: 307px;}
-	.copyright-text { font-size: 11px; color: rgb(0, 0, 0);}
-  </style>
+
+</style>
 </head>
 <body>
 
-<h1>QR Code Generator</h1>
-<p class="hint">
-  This tool runs entirely in your browser. It does not contact any servers (CSP blocks network).
-  You can inspect all code locally.
-</p>
-
-<div class="row">
-  <div class="card">
-    <h2>Input</h2>
-
-    <label for="type">Content type</label>
-	<select id="type">
-		<option value="url" selected>URL</option>
-		<option value="text">Plain text</option>
-		<option value="email">Email address</option>
-		<option value="phone">Phone number</option>
-		<option value="sms">SMS (number only)</option>
-		<option value="geo">Geo (lat,lon)</option>
-	</select>
-
-	
-	<label for="text">Enter Contents Here:</label>
-    <textarea id="text" spellcheck="false">https://example.com</textarea>
-
-    <label for="ecc">Error correction level</label>
-    <select id="ecc">
-      <option value="L">Low (7%)</option>
-      <option value="M" selected>Medium (15%)</option>
-      <option value="Q">High (25%)</option>
-      <option value="H">Max (30%)</option>
-    </select>
-	<p style="font-size: 12px; margin-bottom: 16px; margin-top: 1px;">
-	(Improves readability if the code gets damaged)</p>
-
-    <label for="modulesize">Module Size (pixels per square)</label>
-    <input id="modulesize" type="number" min="2" max="32" value="8" />
-
-    <label for="margin">Margin Size (in modules)</label>
-    <input id="margin" type="number" min="0" max="20" value="4" />
-
-    <label for="format">Output Format</label>
-    <select id="format">
-      <option value="svg" selected>SVG (recommended)</option>
-      <option value="png">PNG</option>
-    </select>
-	<p style="font-size: 12px; margin-bottom: 16px; margin-top: 1px;">
-	<b>SVG</b> is ideal for print and scaling </p>
-    <div class="btnrow">
-      <button id="generate">Generate</button>
-      <button id="download">Download</button>
-    </div>
-
-    <div class="hint">
-      <!-- Notes: -->
-      <ul>
-        <!-- <li><b>SVG</b> is ideal for print and scaling.</li> -->
-        <!-- <li>“Version” controls capacity; higher versions are larger.</li> -->
-        <!-- <li>Error Correction improves readability if the code gets damaged.</li> -->
-      </ul>
-    </div>
-	
-	    <label for="version">QR Code Version (size)</label>
-    <select id="version">
-      <option value="0" selected>Auto</option>
-      <!-- Versions 1..40 will be added by app.js -->
-
-    </select>
-	<p style="font-size: 12px; margin-bottom: 16px; margin-top: 1px;">
-	<b>Auto</b> is recommended </p>
+<div id="welcome">
+  <div>Welcome! </br>
+  First, approve access to the microphone.</br>
+  Click "OK" to start.
   </div>
-
-  <div class="card">
-    <h2>Preview</h2>
-    <div id="out"></div>
-    <div class="hint">
-      <b>Tip:</b> Use the <code>Download</code> button to the left to save the image.
-	  
-	<br>
-	<br>
-	
-	<label for="payload">Encoded payload (what is inside the QR)</label>
-	<input id="payload" type="text" readonly />
-
-  </div>
+  <button id="startBtn">OK</button>
 </div>
+
+<div id="pausenote">Click or tap on the screen to pause/freeze the display.</div>
+
+<div id="info">Strongest: -- Hz</div>
+<div id="hamburger">&#9776;</div>
+<div id="settings">
+  <label><input type="checkbox" id="hpfToggle"> High-pass filter</label>
+  <br>
+  <select id="hpfFreq">
+    <option value="60">60 Hz</option>
+    <option value="120">120 Hz</option>
+    <option value="250">250 Hz</option>
+    <option value="400">400 Hz</option>
+  </select>
+</div>
+
+
 <div class="copyright-overlay">
   <div class="copyright-card">
-    <img src="logo.png" alt="Encore" class="copyright-logo" />
+    <img src="logo_white.png" alt="Encore" class="copyright-logo" />
     <div class="copyright-text">
       &copy; 2026 Encore. For internal use only.
     </div>
   </div>
 </div>
-<!-- Local, vendored QR encoder library (unminified) -->
-<script src="./vendor/qrcode.js"></script>
-<!-- Wrapper UI logic -->
-<script src="./app.js"></script>
 
-<!--
-  This tool includes the following open-source software:
 
-  - qrcode-generator by Kazuhiko Arase
-    Licensed under the MIT License
-    https://github.com/kazuhikoarase/qrcode-generator
--->
+<canvas id="canvas"></canvas>
+
+<div id="pausedOverlay">PAUSED</div>
+
+
+<script>
+(async function(){
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const info = document.getElementById('info');
+  const hamburger = document.getElementById('hamburger');
+  const settings = document.getElementById('settings');
+  const hpfToggle = document.getElementById('hpfToggle');
+  const hpfFreq = document.getElementById('hpfFreq');
+  const welcome = document.getElementById('welcome');
+  const startBtn = document.getElementById('startBtn');
+  const pausenote = document.getElementById('pausenote');
+
+  let running = false;
+  let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  let source, analyser, hpf;
+
+  let fftSize = window.innerWidth < 600 ? 1024 : 2048;
+  let smoothingTime = 0.7;
+
+  // Microphone access immediately
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    source = audioCtx.createMediaStreamSource(stream);
+  } catch(e) {
+    alert('Microphone access denied or not supported');
+    console.error(e);
+    return;
+  }
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = fftSize;
+  analyser.smoothingTimeConstant = smoothingTime;
+
+  function setupHPF() {
+    hpf = audioCtx.createBiquadFilter();
+    hpf.type = 'highpass';
+    hpf.frequency.value = parseFloat(hpfFreq.value);
+  }
+  setupHPF();
+
+  function connectAudio() {
+    try {
+		source.disconnect();
+		if (hpf) hpf.disconnect();
+		} catch(e) {
+		}
+		
+	if(hpfToggle.checked) {
+	source.connect(hpf);
+	hpf.connect(analyser);
+    } else  {
+	source.connect(analyser);
+	}
+  }
+  connectAudio();
+
+  hpfToggle.addEventListener('change', connectAudio);
+  hpfFreq.addEventListener('change', () => {
+    if(hpf) hpf.frequency.value = parseFloat(hpfFreq.value);
+  });
+
+  hamburger.addEventListener('click', () => {
+    settings.style.display = settings.style.display === 'none' ? 'block' : 'none';
+  });
+
+const pausedOverlay = document.getElementById('pausedOverlay');
+
+  canvas.addEventListener('click', () => {
+    running = !running;
+	
+    if(running) {
+	audioCtx.resume();
+	pausedOverlay.style.display = 'none';
+    } else {
+		audioCtx.suspend();
+		pausedOverlay.style.display = 'block';
+	}
+  });
+
+  startBtn.addEventListener('click', () => {
+	
+	welcome.style.display = 'none';
+	
+	pausenote.style.display = 'block';
+	
+	audioCtx.resume();
+		
+    setTimeout(() => {
+		running = true;
+		draw();
+	}, 300);
+  });
+
+  function draw() {
+    console.log('drawing frame');
+	if(!running) { requestAnimationFrame(draw); return; }
+
+    const width = canvas.width;
+    const height = canvas.height;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0,0,width,height);
+
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(data);
+
+    const sampleRate = audioCtx.sampleRate;
+
+    // Strongest frequency only
+    let maxIndex = 0;
+    for(let i=0;i<data.length;i++){
+      if(data[i] > data[maxIndex]) maxIndex = i;
+    }
+    const strongestFreq = Math.round(maxIndex*sampleRate/analyser.fftSize);
+    info.textContent = `Strongest: ${strongestFreq} Hz`;
+
+    // Draw grid
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+
+    // X-axis lines and labels
+    const minFreq = 20;
+    const maxFreq = 20000;
+    const freqs = [];
+    for(let f=10; f<100; f+=10) freqs.push(f);
+    for(let f=100; f<1000; f+=100) freqs.push(f);
+    for(let f=1000; f<10000; f+=1000) freqs.push(f);
+    freqs.push(20000);
+
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px sans-serif';
+    freqs.forEach(f => {
+      const x = Math.log10(f/minFreq)/Math.log10(maxFreq/minFreq)*width;
+      ctx.moveTo(x,0);
+      ctx.lineTo(x,height);
+      ctx.fillText(f>=1000?f/1000+'k':f, x+2, height-2);
+    });
+
+    // Y-axis lines every 10 dB
+    for(let db=0; db<=255; db+=32){
+      const y = height - db/255*height;
+      ctx.moveTo(0,y);
+      ctx.lineTo(width,y);
+      ctx.fillText(`${Math.round(db/255*80)} dB`, 5, y-2);
+    }
+    ctx.stroke();
+
+    // Draw spectrum
+    ctx.strokeStyle = '#0f0';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for(let i=0;i<data.length;i++){
+      const freq = i*sampleRate/analyser.fftSize;
+      if(freq<minFreq) continue;
+      const x = Math.log10(freq/minFreq)/Math.log10(maxFreq/minFreq)*width;
+      const y = height - (data[i]/255)*height;
+      if(i===0) ctx.moveTo(x,y);
+      else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+
+    requestAnimationFrame(draw);
+  }
+})();
+</script>
 
 </body>
 </html>
