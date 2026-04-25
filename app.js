@@ -43,6 +43,26 @@ el("type").addEventListener("change", () => {
   generateQr();
 });
 
+
+function populateVersionDropdown() {
+  const versionSelect = el("version");
+  if (!versionSelect) return;
+
+  // Avoid duplicating options if this function runs more than once.
+  // Keep the first option (Auto) and remove everything else.
+  while (versionSelect.options.length > 1) {
+    versionSelect.remove(1);
+  }
+
+  // QR versions are 1..40.
+  for (let v = 1; v <= 40; v++) {
+    const opt = document.createElement("option");
+    opt.value = String(v);
+    opt.textContent = `Version ${v}`;
+    versionSelect.appendChild(opt);
+  }
+}
+
 function buildPayload(type, input) {
   // We keep transformations simple and predictable.
   // If the user selects "raw", we return exactly what they typed.
@@ -203,6 +223,9 @@ function downloadQr() {
 // Wire up events
 el("generate").addEventListener("click", generateQr);
 el("download").addEventListener("click", downloadQr);
+
+// Populate QR Version drop-down list
+populateVersionDropdown();
 
 // Auto-generate on load for immediate feedback
 generateQr();

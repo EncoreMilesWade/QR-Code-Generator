@@ -22,7 +22,7 @@
 	body { font-family: system-ui, Segoe UI, Arial, sans-serif; margin: 24px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
-    label { display:block; font-size: 12px; color:#333; margin-top: 10px; }
+    label { display:block; font-size: 20px; color:#333; margin-top: 10px; }
     input, select, textarea, button { width: 100%; padding: 8px; margin-top: 6px; }
     textarea { height: 120px; resize: vertical; }
     #out { display:flex; justify-content:center; align-items:center; min-height: 320px; }
@@ -70,19 +70,6 @@
 	<p style="font-size: 12px; margin-bottom: 16px; margin-top: 1px;">
 	(Improves readability if the code gets damaged)</p>
 
-    <label for="version">QR Version (size)</label>
-    <select id="version">
-      <option value="0" selected>Auto</option>
-      <!-- Versions 1..40 -->
-      <script>
-        // This tiny inline script only builds the dropdown list (no network, no inputs).
-        // If preferred, can move this into app.js for a single-script policy.
-        for (let v = 1; v <= 40; v++) {
-          document.write(`<option value="${v}">Version ${v}</option>`);
-        }
-      </script>
-    </select>
-
     <label for="modulesize">Module Size (pixels per square)</label>
     <input id="modulesize" type="number" min="2" max="32" value="8" />
 
@@ -95,7 +82,7 @@
       <option value="png">PNG</option>
     </select>
 	<p style="font-size: 12px; margin-bottom: 16px; margin-top: 1px;">
-	<b>SVG</b> is ideal for print and scaling. </p>
+	<b>SVG</b> is ideal for print and scaling </p>
     <div class="btnrow">
       <button id="generate">Generate</button>
       <button id="download">Download</button>
@@ -109,6 +96,15 @@
         <!-- <li>Error Correction improves readability if the code gets damaged.</li> -->
       </ul>
     </div>
+	
+	    <label for="version">QR Code Version (size)</label>
+    <select id="version">
+      <option value="0" selected>Auto</option>
+      <!-- Versions 1..40 will be added by app.js -->
+
+    </select>
+	<p style="font-size: 12px; margin-bottom: 16px; margin-top: 1px;">
+	<b>Auto</b> is recommended </p>
   </div>
 
   <div class="card">
